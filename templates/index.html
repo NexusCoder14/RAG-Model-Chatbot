@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Next Generation Unified System</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@200;300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #050108;
+  --bg2:        #0c0212;
+  --border:     #3a0820;
+  --border2:    #5a1030;
+  --red:        #ff2020;
+  --red-bright: #ff5555;
+  --red-dim:    #cc1030;
+  --red-glow:   rgba(255,32,32,0.2);
+  --amber:      #ff8800;
+  --gold:       #ffcc00;
+  --white:      #ffffff;
+  --text:       #f8e8e8;
+  --text-mid:   #c09090;
+  --text-muted: #805060;
+  --text-faint: #503040;
+  --mono:       'Share Tech Mono', monospace;
+  --display:    'Orbitron', sans-serif;
+  --body:       'Exo 2', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:var(--body); overflow:hidden; }
+
+/* ── BG ── */
+#bg-canvas { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.scanlines {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px);
+}
+.vignette {
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  background: radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(5,1,8,0.88) 100%);
+}
+
+/* ── BOOT ── */
+#boot-screen {
+  position:fixed; inset:0; z-index:200;
+  background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:28px;
+  transition: opacity 0.7s ease;
+}
+.boot-logo {
+  font-family:var(--display); font-size:clamp(48px,10vw,90px);
+  font-weight:900; letter-spacing:16px; color:var(--red);
+  text-shadow: 0 0 30px var(--red), 0 0 70px rgba(255,32,32,0.45), 0 0 130px rgba(255,32,32,0.18);
+  animation: bpulse 1.1s ease-in-out infinite;
+}
+@keyframes bpulse {
+  0%,100% { text-shadow: 0 0 30px var(--red), 0 0 70px rgba(255,32,32,0.45); }
+  50%     { text-shadow: 0 0 50px var(--red), 0 0 110px rgba(255,32,32,0.65), 0 0 200px rgba(255,32,32,0.25); }
+}
+.boot-tagline {
+  font-family:var(--mono); font-size:11px; letter-spacing:4px;
+  color:var(--text-muted); text-transform:uppercase;
+}
+.boot-lines { font-family:var(--mono); font-size:11px; color:var(--text-muted); width:460px; max-width:90vw; }
+.boot-line { opacity:0; transform:translateX(-10px); transition:all 0.25s ease; padding:2px 0; }
+.boot-line.show { opacity:1; transform:translateX(0); color:var(--text-mid); }
+.boot-line.show::before { content:'> '; color:var(--red-dim); }
+.boot-bar-wrap { width:460px; max-width:90vw; }
+.boot-bar-label { font-family:var(--mono); font-size:8px; letter-spacing:3px; color:var(--text-muted); margin-bottom:6px; display:flex; justify-content:space-between; }
+.boot-bar { height:2px; background:var(--border); border-radius:1px; overflow:hidden; }
+.boot-bar-fill { height:100%; width:0%; background:linear-gradient(90deg, #880010, var(--red), var(--red-bright)); transition:width 0.12s; box-shadow:0 0 10px var(--red); }
+
+/* ── APP ── */
+#app { position:relative; z-index:10; width:100vw; height:100vh; display:flex; flex-direction:column; align-items:center; }
+
+/* ── HEADER ── */
+header {
+  width:100%; padding:0 28px; height:58px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  background: rgba(8,1,12,0.96);
+  backdrop-filter: blur(16px);
+  flex-shrink:0;
+  position:relative;
+}
+header::after {
+  content:'';
+  position:absolute; bottom:-1px; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, var(--red-dim), var(--red), var(--red-dim), transparent);
+  opacity:0.5;
+}
+
+.logo { display:flex; align-items:center; gap:14px; }
+.logo-icon {
+  width:36px; height:36px; border:1px solid var(--red-dim);
+  background: linear-gradient(135deg, rgba(255,32,32,0.08), rgba(255,32,32,0.02));
+  display:flex; align-items:center; justify-content:center;
+  border-radius:3px; position:relative;
+  box-shadow: 0 0 12px rgba(255,32,32,0.15), inset 0 0 8px rgba(255,32,32,0.05);
+}
+.logo-icon svg { width:18px; height:18px; color:var(--red); }
+.logo-text { display:flex; flex-direction:column; }
+.logo-name {
+  font-family:var(--display); font-size:18px; font-weight:900; letter-spacing:6px;
+  color:var(--red); text-shadow:0 0 15px rgba(255,32,32,0.6); line-height:1;
+}
+.logo-sub { font-family:var(--mono); font-size:7px; letter-spacing:2.5px; color:var(--text-muted); margin-top:3px; }
+
+.header-center { display:flex; align-items:center; gap:24px; }
+.hstatus { display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:9px; color:var(--text-mid); letter-spacing:1px; }
+.hdot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.hdot.red { background:var(--red); box-shadow:0 0 8px var(--red); animation:dotpulse 2s ease-in-out infinite; }
+.hdot.amber { background:var(--amber); box-shadow:0 0 8px var(--amber); animation:dotpulse 2.5s ease-in-out infinite; }
+.hdot.gold { background:var(--gold); box-shadow:0 0 8px var(--gold); animation:dotpulse 3s ease-in-out infinite; }
+@keyframes dotpulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+.hsep { width:1px; height:20px; background:var(--border2); }
+
+.header-right { display:flex; align-items:center; gap:12px; }
+.hbar-group { display:flex; flex-direction:column; gap:5px; }
+.hbar-item { display:flex; align-items:center; gap:8px; }
+.hbar-label { font-family:var(--mono); font-size:7px; letter-spacing:1.5px; color:var(--text-muted); width:42px; text-align:right; }
+.hbar-track { width:70px; height:2px; background:var(--border); border-radius:1px; overflow:hidden; }
+.hbar-fill { height:100%; background:linear-gradient(90deg, var(--red-dim), var(--red)); border-radius:1px; animation:hbfill 3s ease-in-out infinite; }
+.hbar-fill:nth-child(2) { animation-delay:1s; }
+@keyframes hbfill { 0%,100%{width:82%;} 50%{width:96%;} }
+
+.mem-btn {
+  height:32px; padding:0 12px;
+  border:1px solid var(--border2); border-radius:3px;
+  background:rgba(255,32,32,0.06);
+  color:var(--text-mid); font-family:var(--mono); font-size:9px; letter-spacing:2px;
+  cursor:pointer; display:flex; align-items:center; gap:7px; transition:all 0.2s;
+}
+.mem-btn:hover { border-color:var(--red-dim); color:var(--red-bright); background:rgba(255,32,32,0.12); box-shadow:0 0 12px rgba(255,32,32,0.15); }
+
+/* ── SIDE HUDs ── */
+.side-panel {
+  position:fixed; top:50%; transform:translateY(-50%);
+  z-index:5; pointer-events:none;
+  display:flex; flex-direction:column; gap:12px;
+}
+.side-panel.left  { left:14px; align-items:flex-start; }
+.side-panel.right { right:14px; align-items:flex-end; }
+.sp-item { display:flex; align-items:center; gap:6px; }
+.sp-label { font-family:var(--mono); font-size:8px; color:var(--text-muted); letter-spacing:1px; width:26px; }
+.sp-bar { width:38px; height:2px; background:var(--border); border-radius:1px; overflow:hidden; }
+.sp-fill { height:100%; background:var(--red-dim); border-radius:1px; animation:spfill 4s ease-in-out infinite; }
+@keyframes spfill { 0%,100%{width:60%;} 50%{width:90%;} }
+.sp-val { font-family:var(--mono); font-size:8px; color:var(--text-faint); letter-spacing:1px; width:26px; text-align:right; }
+
+/* ── CORNER DECORATIONS ── */
+.corner { position:fixed; z-index:5; pointer-events:none; }
+.corner.tl { top:0; left:0; }
+.corner.tr { top:0; right:0; }
+.corner.bl { bottom:0; left:0; }
+.corner.br { bottom:0; right:0; }
+.corner svg { width:50px; height:50px; }
+
+/* ── MAIN ── */
+.main { flex:1; width:100%; max-width:960px; display:flex; flex-direction:column; overflow:hidden; padding:0 22px; }
+
+/* ── MESSAGES ── */
+#msgs {
+  flex:1; overflow-y:auto; padding:18px 0; display:flex; flex-direction:column; gap:16px;
+  scrollbar-width:thin; scrollbar-color:var(--border2) transparent;
+}
+#msgs::-webkit-scrollbar { width:4px; }
+#msgs::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+.mrow { display:flex; gap:12px; align-items:flex-start; animation:fadein 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+@keyframes fadein { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+.mrow.user { flex-direction:row-reverse; }
+
+.mav {
+  width:34px; height:34px; border-radius:4px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--display); font-size:8px; font-weight:700; letter-spacing:1px;
+}
+.mav.na {
+  background:linear-gradient(135deg,#120210,#1e0318);
+  border:1px solid var(--red-dim); color:var(--red);
+  box-shadow:0 0 14px rgba(255,32,32,0.2), inset 0 0 8px rgba(255,32,32,0.06);
+}
+.mav.ua {
+  background:linear-gradient(135deg,#100212,#180218);
+  border:1px solid #602040; color:var(--amber);
+}
+
+.mbub { max-width:72%; border-radius:3px; overflow:hidden; }
+
+.mbub-header {
+  padding:6px 14px 5px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.mbub-label { font-family:var(--mono); font-size:8px; letter-spacing:2px; }
+.mbub-time  { font-family:var(--mono); font-size:7px; color:var(--text-faint); }
+.mbub-body  { padding:10px 14px 12px; font-size:13px; line-height:1.8; font-family:var(--body); font-weight:300; }
+
+.mbub.nb {
+  background:linear-gradient(160deg, rgba(18,2,12,0.98), rgba(22,3,14,0.98));
+  border:1px solid var(--border2); border-left:3px solid var(--red-dim);
+  box-shadow:0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,32,32,0.04);
+}
+.mbub.nb .mbub-header { background:rgba(255,32,32,0.04); }
+.mbub.nb .mbub-label  { color:var(--red); }
+.mbub.nb .mbub-body   { color:var(--text); }
+
+.mbub.ub {
+  background:linear-gradient(160deg, rgba(14,2,10,0.98), rgba(18,3,12,0.98));
+  border:1px solid #4a1030; border-right:3px solid var(--amber);
+  box-shadow:0 4px 24px rgba(0,0,0,0.6);
+}
+.mbub.ub .mbub-header { background:rgba(255,136,0,0.04); justify-content:flex-end; }
+.mbub.ub .mbub-label  { color:var(--amber); }
+.mbub.ub .mbub-body   { color:var(--text); text-align:left; }
+
+/* Typing */
+.tind { display:flex; align-items:center; gap:5px; padding:2px 0; }
+.tdot { width:6px; height:6px; border-radius:50%; background:var(--red); animation:td 1.3s ease-in-out infinite; }
+.tdot:nth-child(2){animation-delay:0.22s;} .tdot:nth-child(3){animation-delay:0.44s;}
+@keyframes td { 0%,60%,100%{transform:translateY(0);opacity:0.25;} 30%{transform:translateY(-7px);opacity:1;} }
+
+/* ── WELCOME ── */
+#welcome {
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:22px; padding:16px 0;
+}
+#ring-canvas { display:block; margin:0 auto; }
+.wtitle {
+  font-family:var(--display); font-size:clamp(30px,6vw,58px); font-weight:900;
+  letter-spacing:12px; color:var(--red);
+  text-shadow:0 0 30px rgba(255,32,32,0.55); text-align:center;
+}
+.wsub { font-family:var(--mono); font-size:10px; letter-spacing:3px; color:var(--text-muted); text-align:center; }
+
+.wgrid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; width:100%; max-width:740px; }
+.wcard {
+  border:1px solid var(--border2);
+  background:linear-gradient(135deg, rgba(18,2,12,0.85), rgba(22,3,14,0.7));
+  padding:14px 16px; border-radius:3px; cursor:pointer;
+  transition:all 0.22s; position:relative; overflow:hidden;
+}
+.wcard::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg, rgba(255,32,32,0.04), transparent);
+  opacity:0; transition:opacity 0.22s;
+}
+.wcard:hover { border-color:var(--red-dim); transform:translateY(-2px); box-shadow:0 4px 20px rgba(255,32,32,0.12); }
+.wcard:hover::before { opacity:1; }
+.wcard-icon { font-size:18px; margin-bottom:8px; }
+.wcard-text { font-family:var(--mono); font-size:11px; color:var(--text-mid); letter-spacing:0.5px; line-height:1.4; }
+.wcard:hover .wcard-text { color:var(--red-bright); }
+
+/* ── INPUT ── */
+.iarea {
+  padding:14px 0 20px; flex-shrink:0;
+  border-top:1px solid var(--border);
+  background:linear-gradient(0deg, rgba(5,1,8,0.99) 0%, transparent 100%);
+}
+.ihud { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.itag {
+  font-family:var(--mono); font-size:8px; letter-spacing:2px; padding:3px 10px;
+  border:1px solid var(--border); border-radius:2px; color:var(--text-muted);
+}
+.itag.on { border-color:var(--red-dim); color:var(--red-bright); background:rgba(255,32,32,0.06); }
+.iline { flex:1; height:1px; background:linear-gradient(90deg, var(--border2), transparent); }
+.iline.right { background:linear-gradient(270deg, var(--border2), transparent); }
+
+.irow { display:flex; gap:10px; align-items:flex-end; }
+.iwrap {
+  flex:1; position:relative;
+  border:1px solid var(--border2); border-radius:3px;
+  background:rgba(10,1,8,0.95); transition:all 0.22s;
+}
+.iwrap:focus-within { border-color:var(--red-dim); box-shadow:0 0 0 1px rgba(255,32,32,0.12), 0 0 24px rgba(255,32,32,0.08); }
+
+/* animated corner brackets on focus */
+.ic { position:absolute; width:10px; height:10px; border-color:var(--red); border-style:solid; opacity:0; transition:opacity 0.2s, transform 0.2s; }
+.ic.tl { top:-1px; left:-1px; border-width:2px 0 0 2px; transform:translate(3px,3px); }
+.ic.tr { top:-1px; right:-1px; border-width:2px 2px 0 0; transform:translate(-3px,3px); }
+.ic.bl { bottom:-1px; left:-1px; border-width:0 0 2px 2px; transform:translate(3px,-3px); }
+.ic.br { bottom:-1px; right:-1px; border-width:0 2px 2px 0; transform:translate(-3px,-3px); }
+.iwrap:focus-within .ic { opacity:1; transform:translate(0,0); }
+
+#inp {
+  width:100%; background:transparent; border:none; outline:none;
+  color:var(--text); font-family:var(--mono); font-size:13px;
+  padding:14px 18px; resize:none; max-height:130px; line-height:1.6;
+}
+#inp::placeholder { color:var(--text-faint); }
+
+#sbtn {
+  width:50px; height:50px; flex-shrink:0;
+  border:1px solid var(--red-dim); border-radius:3px;
+  background:linear-gradient(135deg, rgba(255,32,32,0.14), rgba(255,32,32,0.06));
+  color:var(--red); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all 0.2s; position:relative; overflow:hidden;
+}
+#sbtn::before {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(135deg, rgba(255,32,32,0.15), transparent);
+  opacity:0; transition:opacity 0.2s;
+}
+#sbtn:hover { box-shadow:0 0 24px rgba(255,32,32,0.4); transform:scale(1.06); color:var(--white); border-color:var(--red); }
+#sbtn:hover::before { opacity:1; }
+#sbtn:active { transform:scale(0.96); }
+#sbtn:disabled { opacity:0.25; cursor:not-allowed; transform:none; }
+
+/* ── MEMORY PANEL ── */
+#mpanel {
+  display:none; position:fixed; top:66px; right:18px; z-index:100;
+  width:310px; border-radius:4px;
+  background:rgba(8,1,12,0.97); border:1px solid var(--border2);
+  box-shadow:0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,32,32,0.08);
+  overflow:hidden;
+}
+.mpanel-header {
+  padding:12px 16px; background:rgba(255,32,32,0.06);
+  border-bottom:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.mpanel-title { font-family:var(--display); font-size:10px; letter-spacing:3px; color:var(--red); }
+.mpanel-close {
+  background:none; border:none; color:var(--text-muted); cursor:pointer;
+  font-size:16px; line-height:1; transition:color 0.2s; padding:0 2px;
+}
+.mpanel-close:hover { color:var(--red-bright); }
+.mpanel-body { padding:14px 16px; font-family:var(--mono); font-size:10px; max-height:340px; overflow-y:auto; }
+.mpanel-body::-webkit-scrollbar { width:3px; }
+.mpanel-body::-webkit-scrollbar-thumb { background:var(--border2); }
+#mcontent .msec { color:var(--red-bright); letter-spacing:2px; font-size:9px; margin:10px 0 5px; }
+#mcontent .msec:first-child { margin-top:0; }
+#mcontent .mrow2 { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+#mcontent .mkey { color:var(--text-muted); }
+#mcontent .mval { color:var(--text-mid); text-align:right; }
+#mcontent .mfact { padding:4px 0; border-bottom:1px solid rgba(58,8,32,0.5); color:var(--text-mid); }
+#mcontent .mfact::before { content:'▸ '; color:var(--red-dim); }
+.mpanel-footer { padding:10px 16px; border-top:1px solid var(--border2); display:flex; gap:8px; }
+.mpanel-btn {
+  flex:1; padding:7px; border-radius:2px; cursor:pointer;
+  font-family:var(--mono); font-size:8px; letter-spacing:1.5px; transition:all 0.2s;
+}
+.mpanel-btn.danger { background:rgba(255,32,32,0.08); border:1px solid var(--red-dim); color:var(--red-bright); }
+.mpanel-btn.danger:hover { background:rgba(255,32,32,0.18); }
+.mpanel-btn.close  { background:rgba(255,136,0,0.08); border:1px solid #602000; color:var(--amber); }
+.mpanel-btn.close:hover { background:rgba(255,136,0,0.16); }
+
+/* ── CORNER DECO ── */
+.cdec { position:fixed; z-index:5; pointer-events:none; }
+.cdec.tl{top:0;left:0;} .cdec.tr{top:0;right:0;} .cdec.bl{bottom:0;left:0;} .cdec.br{bottom:0;right:0;}
+.cdec svg { width:60px; height:60px; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px) {
+  header { padding:0 14px; }
+  .header-center, .hbar-group { display:none; }
+  .main { padding:0 12px; }
+  .mbub { max-width:88%; }
+  .side-panel { display:none; }
+}
+
+/* ── LEARNED BADGE ── */
+.learned-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:var(--mono); font-size:8px; letter-spacing:1.5px;
+  color:var(--gold); background:rgba(255,204,0,0.08);
+  border:1px solid rgba(255,204,0,0.25); border-radius:2px;
+  padding:3px 8px; margin-top:7px;
+  animation:fadeIn 0.4s ease;
+}
+.learned-badge::before { content:'⚡'; font-size:9px; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:translateY(0);} }
+
+/* ── LEARNED PANEL ── */
+#lpanel {
+  display:none; position:fixed; top:66px; right:338px; z-index:100;
+  width:280px; border-radius:4px;
+  background:rgba(8,1,12,0.97); border:1px solid rgba(255,204,0,0.2);
+  box-shadow:0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,204,0,0.06);
+  overflow:hidden;
+}
+.lpanel-header {
+  padding:11px 16px; background:rgba(255,204,0,0.05);
+  border-bottom:1px solid rgba(255,204,0,0.15);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.lpanel-title { font-family:var(--display); font-size:9px; letter-spacing:3px; color:var(--gold); }
+.lpanel-body { padding:13px 16px; font-family:var(--mono); font-size:10px; max-height:300px; overflow-y:auto; }
+.ltopic { padding:5px 0; border-bottom:1px solid rgba(58,8,32,0.5); color:var(--text-mid); }
+.ltopic::before { content:"▸ "; color:var(--gold); }
+.lpanel-footer { padding:9px 16px; border-top:1px solid var(--border2); display:flex; gap:8px; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<!-- Corner decorations -->
+<div class="cdec tl"><svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 50 L2 2 L50 2" stroke="#3a0820" stroke-width="1"/><path d="M2 24 L2 2 L24 2" stroke="#cc1030" stroke-width="1.5" opacity="0.7"/><rect x="0" y="0" width="4" height="4" fill="#ff2020" opacity="0.6"/></svg></div>
+<div class="cdec tr"><svg viewBox="0 0 60 60" fill="none" style="transform:scaleX(-1)"><path d="M2 50 L2 2 L50 2" stroke="#3a0820" stroke-width="1"/><path d="M2 24 L2 2 L24 2" stroke="#cc1030" stroke-width="1.5" opacity="0.7"/><rect x="0" y="0" width="4" height="4" fill="#ff2020" opacity="0.6"/></svg></div>
+<div class="cdec bl"><svg viewBox="0 0 60 60" fill="none" style="transform:scaleY(-1)"><path d="M2 50 L2 2 L50 2" stroke="#3a0820" stroke-width="1"/><path d="M2 24 L2 2 L24 2" stroke="#cc1030" stroke-width="1.5" opacity="0.7"/><rect x="0" y="0" width="4" height="4" fill="#ff2020" opacity="0.6"/></svg></div>
+<div class="cdec br"><svg viewBox="0 0 60 60" fill="none" style="transform:scale(-1)"><path d="M2 50 L2 2 L50 2" stroke="#3a0820" stroke-width="1"/><path d="M2 24 L2 2 L24 2" stroke="#cc1030" stroke-width="1.5" opacity="0.7"/><rect x="0" y="0" width="4" height="4" fill="#ff2020" opacity="0.6"/></svg></div>
+
+<!-- Side panels -->
+<div class="side-panel left">
+  <div class="sp-item"><div class="sp-label">SYS</div><div class="sp-bar"><div class="sp-fill" style="animation-delay:0s"></div></div><div class="sp-val">97%</div></div>
+  <div class="sp-item"><div class="sp-label">NET</div><div class="sp-bar"><div class="sp-fill" style="animation-delay:0.8s"></div></div><div class="sp-val">64%</div></div>
+  <div class="sp-item"><div class="sp-label">MEM</div><div class="sp-bar"><div class="sp-fill" style="animation-delay:1.6s"></div></div><div class="sp-val">81%</div></div>
+  <div class="sp-item"><div class="sp-label">CPU</div><div class="sp-bar"><div class="sp-fill" style="animation-delay:2.4s"></div></div><div class="sp-val">43%</div></div>
+</div>
+<div class="side-panel right">
+  <div class="sp-item"><div class="sp-val" style="text-align:left">78%</div><div class="sp-bar"><div class="sp-fill" style="animation-delay:0.4s"></div></div><div class="sp-label" style="text-align:right">API</div></div>
+  <div class="sp-item"><div class="sp-val" style="text-align:left">92%</div><div class="sp-bar"><div class="sp-fill" style="animation-delay:1.2s"></div></div><div class="sp-label" style="text-align:right">RAG</div></div>
+  <div class="sp-item"><div class="sp-val" style="text-align:left">88%</div><div class="sp-bar"><div class="sp-fill" style="animation-delay:2.0s"></div></div><div class="sp-label" style="text-align:right">NLP</div></div>
+  <div class="sp-item"><div class="sp-val" style="text-align:left">55%</div><div class="sp-bar"><div class="sp-fill" style="animation-delay:2.8s"></div></div><div class="sp-label" style="text-align:right">VEC</div></div>
+</div>
+
+<!-- Boot Screen -->
+<div id="boot-screen">
+  <div class="boot-logo">NEXUS</div>
+  <div class="boot-tagline">Next Generation Unified System</div>
+  <div class="boot-lines" id="blines"></div>
+  <div class="boot-bar-wrap">
+    <div class="boot-bar-label">
+      <span>SYSTEM INITIALIZATION</span>
+      <span id="boot-pct">0%</span>
+    </div>
+    <div class="boot-bar"><div class="boot-bar-fill" id="bfill"></div></div>
+  </div>
+</div>
+
+<!-- Memory Panel -->
+<div id="mpanel">
+  <div class="mpanel-header">
+    <div class="mpanel-title">NEXUS MEMORY</div>
+    <button class="mpanel-close" onclick="closeMem()">✕</button>
+  </div>
+  <div class="mpanel-body">
+    <div id="mcontent"><div style="color:var(--text-muted);font-size:10px;">Loading memory data...</div></div>
+  </div>
+  <div class="mpanel-footer">
+    <button class="mpanel-btn danger" onclick="clearMem()">CLEAR MEMORY</button>
+    <button class="mpanel-btn close"  onclick="closeMem()">CLOSE</button>
+  </div>
+</div>
+
+<!-- Learned Panel -->
+<div id="lpanel">
+  <div class="lpanel-header">
+    <div class="lpanel-title">LEARNED KNOWLEDGE</div>
+    <button class="mpanel-close" onclick="document.getElementById('lpanel').style.display='none'">✕</button>
+  </div>
+  <div class="lpanel-body">
+    <div id="lcontent" style="color:var(--text-muted);">Loading...</div>
+  </div>
+  <div class="lpanel-footer">
+    <button class="mpanel-btn danger" onclick="clearLearned()">CLEAR ALL</button>
+    <button class="mpanel-btn close" onclick="document.getElementById('lpanel').style.display='none'">CLOSE</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <header>
+    <!-- Left: Logo -->
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/>
+          <circle cx="12" cy="12" r="3"/>
+          <line x1="12" y1="2" x2="12" y2="9"/>
+          <line x1="12" y1="15" x2="12" y2="22"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <div class="logo-name">NEXUS</div>
+        <div class="logo-sub">Next Generation Unified System</div>
+      </div>
+    </div>
+
+    <!-- Center: Status -->
+    <div class="header-center">
+      <div class="hstatus"><div class="hdot red"></div>SYSTEM ONLINE</div>
+      <div class="hsep"></div>
+      <div class="hstatus"><div class="hdot amber"></div>GROQ · API</div>
+      <div class="hsep"></div>
+      <div class="hstatus"><div class="hdot gold"></div>LLAMA 3.3 · 70B</div>
+    </div>
+
+    <!-- Right: Meters + Memory -->
+    <div class="header-right">
+      <div class="hbar-group">
+        <div class="hbar-item">
+          <div class="hbar-label">NEURAL</div>
+          <div class="hbar-track"><div class="hbar-fill" style="animation-delay:0s"></div></div>
+        </div>
+        <div class="hbar-item">
+          <div class="hbar-label">VECTOR</div>
+          <div class="hbar-track"><div class="hbar-fill" style="animation-delay:1.5s"></div></div>
+        </div>
+      </div>
+      <button class="mem-btn" onclick="showMem()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2" stroke-linecap="round"/>
+        </svg>
+        MEMORY
+      </button>
+      <button class="mem-btn" onclick="showLearned()" style="border-color:rgba(255,204,0,0.25);color:#a08000;" id="learn-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2l3 7h7l-6 4 2 7-6-4-6 4 2-7-6-4h7z"/>
+        </svg>
+        LEARNED
+      </button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Messages -->
+    <div id="msgs">
+      <div id="welcome">
+        <canvas id="ring-canvas" width="140" height="140"></canvas>
+        <div class="wtitle">NEXUS</div>
+        <div class="wsub">NEXT GENERATION UNIFIED SYSTEM &nbsp;·&nbsp; ALL SYSTEMS ONLINE</div>
+        <div class="wgrid">
+          <div class="wcard" onclick="sq(this)"><div class="wcard-icon">⚡</div><div class="wcard-text">What can you do?</div></div>
+          <div class="wcard" onclick="sq(this)"><div class="wcard-icon">🔬</div><div class="wcard-text">Explain quantum computing</div></div>
+          <div class="wcard" onclick="sq(this)"><div class="wcard-icon">🚀</div><div class="wcard-text">Tell me about black holes</div></div>
+          <div class="wcard" onclick="sq(this)"><div class="wcard-icon">💡</div><div class="wcard-text">How do I stay productive?</div></div>
+          <div class="wcard" onclick="sq(this)"><div class="wcard-icon">🧠</div><div class="wcard-text">How does AI work?</div></div>
+          <div class="wcard" onclick="sq(this)"><div class="wcard-icon">🌌</div><div class="wcard-text">Are we alone in the universe?</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="iarea">
+      <div class="ihud">
+        <div class="itag on">INPUT CHANNEL</div>
+        <div class="iline"></div>
+        <div class="itag" id="cc">0 CHARS</div>
+        <div class="iline right"></div>
+        <div class="itag">NEXUS v5.0</div>
+      </div>
+      <div class="irow">
+        <div class="iwrap">
+          <div class="ic tl"></div><div class="ic tr"></div>
+          <div class="ic bl"></div><div class="ic br"></div>
+          <textarea id="inp" rows="1" placeholder="Speak your query, sir..."></textarea>
+        </div>
+        <button id="sbtn" onclick="send()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ BOOT ═══════════════════════════════════════════════
+const bootMsgs = [
+  'Initializing NEXUS core systems...',
+  'Loading neural language model...',
+  'Connecting to Groq API endpoint...',
+  'Mounting RAG knowledge base...',
+  'Vector index loaded — 138 chunks active',
+  'Memory system online...',
+  'Personality matrix engaged...',
+  'All systems nominal. NEXUS online, sir.',
+];
+let bi = 0;
+const blines = document.getElementById('blines');
+const bfill  = document.getElementById('bfill');
+const bpct   = document.getElementById('boot-pct');
+
+function runBoot() {
+  if (bi < bootMsgs.length) {
+    const l = document.createElement('div');
+    l.className = 'boot-line'; l.textContent = bootMsgs[bi];
+    blines.appendChild(l); setTimeout(() => l.classList.add('show'), 40);
+    const pct = Math.round((bi + 1) / bootMsgs.length * 100);
+    bfill.style.width = pct + '%'; bpct.textContent = pct + '%';
+    bi++;
+    setTimeout(runBoot, 270);
+  } else {
+    setTimeout(() => {
+      const bs = document.getElementById('boot-screen');
+      bs.style.opacity = '0';
+      setTimeout(() => bs.style.display = 'none', 700);
+    }, 350);
+  }
+}
+setTimeout(runBoot, 400);
+
+// ══ PARTICLES ══════════════════════════════════════════
+const bc = document.getElementById('bg-canvas'), bx = bc.getContext('2d');
+let W, H, pts = [];
+function rsz() {
+  W = bc.width = window.innerWidth; H = bc.height = window.innerHeight; pts = [];
+  for (let i = 0; i < 60; i++) pts.push({
+    x:Math.random()*W, y:Math.random()*H,
+    r:Math.random()*1.4+0.3,
+    vx:(Math.random()-0.5)*0.2, vy:(Math.random()-0.5)*0.2,
+    a:Math.random()*0.45+0.06
+  });
+}
+function dbg() {
+  bx.clearRect(0,0,W,H);
+  // grid
+  bx.strokeStyle='rgba(58,8,32,0.3)'; bx.lineWidth=0.5;
+  for(let x=0;x<W;x+=58){bx.beginPath();bx.moveTo(x,0);bx.lineTo(x,H);bx.stroke();}
+  for(let y=0;y<H;y+=58){bx.beginPath();bx.moveTo(0,y);bx.lineTo(W,y);bx.stroke();}
+  // dots
+  pts.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=W; if(p.x>W)p.x=0; if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+    bx.beginPath(); bx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    bx.fillStyle=`rgba(255,32,32,${p.a})`; bx.fill();
+  });
+  // lines
+  for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+    const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y, d=Math.sqrt(dx*dx+dy*dy);
+    if(d<100){ bx.beginPath(); bx.moveTo(pts[i].x,pts[i].y); bx.lineTo(pts[j].x,pts[j].y);
+      bx.strokeStyle=`rgba(255,32,32,${0.06*(1-d/100)})`; bx.lineWidth=0.5; bx.stroke(); }
+  }
+  requestAnimationFrame(dbg);
+}
+window.addEventListener('resize', rsz); rsz(); dbg();
+
+// ══ RING ═══════════════════════════════════════════════
+const rc = document.getElementById('ring-canvas'), rx = rc.getContext('2d');
+let ra = 0;
+function dring() {
+  rx.clearRect(0,0,140,140); const cx=70,cy=70; ra+=0.016;
+  // Outer ring
+  rx.beginPath(); rx.arc(cx,cy,58,0,Math.PI*2);
+  rx.strokeStyle='rgba(255,32,32,0.08)'; rx.lineWidth=1; rx.stroke();
+  // Main spinning arc
+  const grad = rx.createLinearGradient(cx-58,cy,cx+58,cy);
+  grad.addColorStop(0,'rgba(255,32,32,0)');
+  grad.addColorStop(0.5,'rgba(255,32,32,0.95)');
+  grad.addColorStop(1,'rgba(255,80,80,0.8)');
+  rx.beginPath(); rx.arc(cx,cy,58,ra,ra+Math.PI*1.4);
+  rx.strokeStyle=grad; rx.lineWidth=2.5; rx.stroke();
+  // Second counter ring
+  rx.beginPath(); rx.arc(cx,cy,44,-ra*1.5,-ra*1.5+Math.PI*0.7);
+  rx.strokeStyle='rgba(255,120,0,0.65)'; rx.lineWidth=1.8; rx.stroke();
+  // Inner ring
+  rx.beginPath(); rx.arc(cx,cy,30,0,Math.PI*2);
+  rx.strokeStyle='rgba(255,32,32,0.07)'; rx.lineWidth=1; rx.stroke();
+  // Inner fast arc
+  rx.beginPath(); rx.arc(cx,cy,30,ra*2.5,ra*2.5+Math.PI*0.38);
+  rx.strokeStyle='rgba(255,200,0,0.75)'; rx.lineWidth=2; rx.stroke();
+  // Ticks
+  for(let i=0;i<16;i++){
+    const a=(i/16)*Math.PI*2, r1=52, r2=58;
+    rx.beginPath(); rx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);
+    rx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);
+    rx.strokeStyle=i%4===0?'rgba(255,32,32,0.6)':'rgba(255,32,32,0.14)';
+    rx.lineWidth=i%4===0?1.5:0.5; rx.stroke();
+  }
+  // Center glow
+  const p=0.5+Math.sin(ra*3.2)*0.38;
+  const g=rx.createRadialGradient(cx,cy,0,cx,cy,22);
+  g.addColorStop(0,`rgba(255,32,32,${p*0.55})`); g.addColorStop(1,'transparent');
+  rx.beginPath(); rx.arc(cx,cy,22,0,Math.PI*2); rx.fillStyle=g; rx.fill();
+  // Center dot
+  rx.beginPath(); rx.arc(cx,cy,4,0,Math.PI*2);
+  rx.fillStyle=`rgba(255,80,80,${p})`; rx.fill();
+  requestAnimationFrame(dring);
+}
+dring();
+
+// ══ CHAT ═══════════════════════════════════════════════
+const msgsEl = document.getElementById('msgs');
+const inpEl  = document.getElementById('inp');
+const sbtn   = document.getElementById('sbtn');
+const ccEl   = document.getElementById('cc');
+let ws = true;
+
+inpEl.addEventListener('input', () => {
+  inpEl.style.height = 'auto';
+  inpEl.style.height = Math.min(inpEl.scrollHeight, 130) + 'px';
+  ccEl.textContent = inpEl.value.length + ' CHARS';
+});
+inpEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+function rmWelcome() {
+  if (ws) { const w = document.getElementById('welcome'); if(w)w.remove(); ws=false; }
+}
+
+function getTime() {
+  return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+function addMsg(text, role) {
+  rmWelcome();
+  const row = document.createElement('div'); row.className = `mrow ${role}`;
+  const av  = document.createElement('div'); av.className = `mav ${role==='user'?'ua':'na'}`;
+  av.textContent = role==='user' ? 'YOU' : 'NX';
+
+  const bub = document.createElement('div'); bub.className = `mbub ${role==='user'?'ub':'nb'}`;
+
+  const hdr = document.createElement('div'); hdr.className = 'mbub-header';
+  const lbl = document.createElement('div'); lbl.className = 'mbub-label';
+  lbl.textContent = role==='user' ? 'YOU' : 'NEXUS';
+  const tim = document.createElement('div'); tim.className = 'mbub-time';
+  tim.textContent = getTime();
+  hdr.appendChild(lbl); hdr.appendChild(tim);
+
+  const body = document.createElement('div'); body.className = 'mbub-body';
+  body.textContent = text;
+
+  bub.appendChild(hdr); bub.appendChild(body);
+  row.appendChild(av); row.appendChild(bub);
+  msgsEl.appendChild(row); msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function addTyping() {
+  rmWelcome();
+  const row = document.createElement('div'); row.className = 'mrow nexus'; row.id='trow';
+  const av  = document.createElement('div'); av.className = 'mav na'; av.textContent = 'NX';
+  const bub = document.createElement('div'); bub.className = 'mbub nb';
+  const hdr = document.createElement('div'); hdr.className = 'mbub-header';
+  const lbl = document.createElement('div'); lbl.className = 'mbub-label'; lbl.textContent = 'NEXUS';
+  hdr.appendChild(lbl);
+  const body = document.createElement('div'); body.className = 'mbub-body';
+  const ind  = document.createElement('div'); ind.className = 'tind';
+  ind.innerHTML = '<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>';
+  body.appendChild(ind);
+  bub.appendChild(hdr); bub.appendChild(body);
+  row.appendChild(av); row.appendChild(bub);
+  msgsEl.appendChild(row); msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function sq(card) {
+  const t = card.querySelector('.wcard-text').textContent.trim();
+  inpEl.value = t; send();
+}
+
+async function send() {
+  const text = inpEl.value.trim(); if (!text) return;
+  inpEl.value = ''; inpEl.style.height = 'auto'; ccEl.textContent = '0 CHARS';
+  sbtn.disabled = true;
+  addMsg(text, 'user'); addTyping();
+  try {
+    const res  = await fetch('/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:text})});
+    const data = await res.json();
+    document.getElementById('trow')?.remove();
+    const lastRow = msgsEl.lastElementChild;
+    addMsg(data.response || 'No response received.', 'nexus');
+    // Show learned badge if NEXUS learned something new
+    if (data.learned && data.topic) {
+      const badge = document.createElement('div');
+      badge.className = 'learned-badge';
+      badge.textContent = `LEARNED: ${data.topic}`;
+      const lastBub = msgsEl.lastElementChild.querySelector('.mbub-body');
+      if (lastBub) lastBub.appendChild(badge);
+      // Update learned button glow
+      const lb = document.getElementById('learn-btn');
+      lb.style.borderColor = 'rgba(255,204,0,0.6)';
+      lb.style.color = '#ffcc00';
+      lb.style.boxShadow = '0 0 12px rgba(255,204,0,0.2)';
+    }
+  } catch(e) {
+    document.getElementById('trow')?.remove();
+    addMsg('System error — check backend connection, sir.', 'nexus');
+  }
+  sbtn.disabled = false; inpEl.focus();
+}
+
+// ══ LEARNED ════════════════════════════════════════════
+async function showLearned() {
+  const p = document.getElementById('lpanel');
+  if (p.style.display === 'block') { p.style.display='none'; return; }
+  p.style.display = 'block';
+  const c = document.getElementById('lcontent');
+  c.innerHTML = '<div style="color:var(--text-muted)">Loading...</div>';
+  try {
+    const res = await fetch('/learned'), d = await res.json();
+    if (!d.knowledge || d.knowledge.length === 0) {
+      c.innerHTML = '<div style="color:var(--text-muted)">Nothing learned yet.<br>Ask NEXUS something it does not know — it will search and learn it.</div>';
+      return;
+    }
+    let h = `<div style="color:var(--gold);font-size:9px;letter-spacing:2px;margin-bottom:8px;">${d.total_learned} TOPICS LEARNED</div>`;
+    d.knowledge.slice().reverse().forEach(e => {
+      h += `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(58,8,32,0.5)">`;
+      h += `<div style="color:var(--gold);font-size:9px;letter-spacing:1px;margin-bottom:3px;">▸ ${e.topic}</div>`;
+      h += `<div style="color:var(--text-mid);font-size:10px;line-height:1.6;">${e.content.slice(0,180)}${e.content.length>180?'...':''}</div>`;
+      h += `<div style="color:var(--text-faint);font-size:8px;margin-top:3px;">Learned: ${e.learned}</div>`;
+      h += '</div>';
+    });
+    c.innerHTML = h;
+  } catch(e) { c.innerHTML = '<div style="color:var(--text-muted)">Error loading learned data.</div>'; }
+}
+
+async function clearLearned() {
+  if (!confirm('Clear all learned knowledge? NEXUS will have to re-learn everything.')) return;
+  await fetch('/learned/clear', {method:'POST'});
+  document.getElementById('lcontent').innerHTML = '<div style="color:var(--red-bright)">Learned knowledge cleared, sir.</div>';
+  setTimeout(() => document.getElementById('lpanel').style.display='none', 1500);
+}
+
+// ══ MEMORY ═════════════════════════════════════════════
+function closeMem() { document.getElementById('mpanel').style.display='none'; }
+
+async function showMem() {
+  const p = document.getElementById('mpanel');
+  if (p.style.display === 'block') { closeMem(); return; }
+  p.style.display = 'block';
+  const c = document.getElementById('mcontent');
+  c.innerHTML = '<div style="color:var(--text-muted)">Loading...</div>';
+  try {
+    const res = await fetch('/memory'), d = await res.json();
+    let h = '';
+    h += `<div class="msec">USER PROFILE</div>`;
+    h += `<div class="mrow2"><span class="mkey">Name</span><span class="mval">${d.profile.name || 'Unknown'}</span></div>`;
+    h += `<div class="mrow2"><span class="mkey">Conversations</span><span class="mval">${d.conversation_count}</span></div>`;
+    h += `<div class="mrow2"><span class="mkey">Total messages</span><span class="mval">${d.total_messages}</span></div>`;
+    h += `<div class="mrow2"><span class="mkey">First seen</span><span class="mval">${d.first_seen}</span></div>`;
+    h += `<div class="mrow2"><span class="mkey">Last seen</span><span class="mval">${d.last_seen}</span></div>`;
+    h += `<div class="mrow2"><span class="mkey">Topics learned</span><span class="mval" style="color:var(--gold)">${d.total_learned || 0}</span></div>`;
+    if (d.facts && d.facts.length > 0) {
+      h += `<div class="msec">KNOWN FACTS (${d.facts.length})</div>`;
+      d.facts.slice(-10).forEach(f => { h += `<div class="mfact">${f}</div>`; });
+    } else {
+      h += `<div class="msec">KNOWN FACTS</div>`;
+      h += `<div style="color:var(--text-muted);font-size:10px;padding:4px 0;">No facts learned yet. Keep chatting — NEXUS is listening.</div>`;
+    }
+    c.innerHTML = h;
+  } catch(e) { c.innerHTML = '<div style="color:var(--text-muted)">Error loading memory.</div>'; }
+}
+
+async function clearMem() {
+  if (!confirm('Clear all NEXUS memory? This cannot be undone.')) return;
+  await fetch('/memory/clear', {method:'POST'});
+  document.getElementById('mcontent').innerHTML = '<div style="color:var(--red-bright)">Memory cleared, sir.</div>';
+  setTimeout(closeMem, 1600);
+}
+</script>
+</body>
+</html>

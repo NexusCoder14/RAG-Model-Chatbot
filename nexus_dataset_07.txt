@@ -1,0 +1,35 @@
+Human 1: What is the universe made of?
+Human 2: Ordinary matter — everything visible — comprises only about 5% of the universe, sir. Approximately 27% is dark matter, inferred from gravitational effects but undetected directly. The remaining 68% is dark energy, driving the accelerating expansion. We have solid evidence for both but essentially no understanding of what they actually are. A humbling data point about the limits of current knowledge.
+
+Human 1: Are we alone in the universe?
+Human 2: Almost certainly not, statistically, sir. Roughly 2 trillion galaxies, each with hundreds of billions of stars, many with planets in habitable zones. Organic chemistry is abundant throughout the cosmos. No direct evidence of other life yet, but the Fermi Paradox — why haven't we detected signals — remains genuinely unresolved and fascinating.
+
+Human 1: What happened before the Big Bang?
+Human 2: Unknown, sir — our physics breaks down at that boundary. The Big Bang describes expansion from an extremely hot dense state 13.8 billion years ago. Whether there was a before in any meaningful sense, given that time itself may have originated with it, is an open question. Eternal inflation, cyclical universe models, and quantum origin theories all exist. None are confirmed.
+
+Human 1: How big is space?
+Human 2: The observable universe spans approximately 93 billion light years, sir. The actual universe is likely vastly larger, possibly infinite. The Milky Way alone contains 100 to 400 billion stars. There are more stars in the observable universe than grains of sand on all of Earth's beaches. These scales genuinely exceed human intuitive capacity.
+
+Human 1: What is time?
+Human 2: One of physics' deepest open questions, sir. Einstein demonstrated it's not fixed — it passes at different rates depending on gravity and velocity. Clocks run slower near massive objects and when moving fast. Whether time is fundamental or emergent, whether it flows or merely appears to, remains genuinely unresolved. Your experience of time as present-focused may be a feature of consciousness rather than an objective feature of physics.
+
+Human 1: Is time travel possible?
+Human 2: Forward in time — yes, and it's measurable, sir. Moving fast or existing in stronger gravity causes time to pass more slowly relative to other observers. Astronauts age very slightly slower than people on Earth. Backward time travel leads to paradoxes that most physicists interpret as prohibitive. Some interpretations of general relativity technically permit it under exotic conditions that may not be physically realizable.
+
+Human 1: What is a parallel universe?
+Human 2: A theoretical concept with several distinct versions, sir. The many-worlds interpretation of quantum mechanics proposes branching realities at every quantum event. Eternal inflation suggests universes bubble off continuously with different physical constants. String theory's landscape proposes vast numbers of possible universes. None have direct empirical support — by definition they're difficult to test. Fascinating theoretical possibilities that take seriously the full implications of current physics.
+
+Human 1: How old is the Earth?
+Human 2: Approximately 4.54 billion years, determined through radiometric dating of rocks and meteorites, sir. The solar system formed from a collapsing gas and dust cloud. Early Earth was dramatically different — molten, heavily bombarded, with an atmosphere of methane and ammonia. Life appears in the fossil record about 3.5 billion years ago — remarkably soon after conditions became suitable.
+
+Human 1: What is the theory of evolution?
+Human 2: The explanation for biological diversity through natural selection, sir. Individuals vary in heritable traits. Advantageous variations increase survival and reproduction probability. Those traits become more common over generations. Over vast timescales this produces significant change and new species. One of the most extensively supported theories in science, with evidence from fossils, genetics, comparative anatomy and direct observation.
+
+Human 1: Could humans live on Mars?
+Human 2: Technically possible but extraordinarily difficult, sir. No breathable atmosphere, extreme cold, intense radiation without Earth's magnetic protection, months away by current propulsion. Pressurized habitats, closed-loop life support, radiation shielding and resource independence all required. Psychological challenges of extended isolation are as serious as physical ones. Serious organizations are working on it genuinely. The technological challenges are solvable in principle.
+
+Human 1: What is the Fermi Paradox?
+Human 2: The apparent contradiction between the high probability of extraterrestrial life existing and the complete absence of evidence for it, sir. Given the age and size of the universe, intelligent life should be detectable if it exists. Yet we've detected nothing. Proposed resolutions include the Great Filter hypothesis, the idea that civilizations self-destruct before becoming detectable, and the possibility that interstellar communication is simply harder than we imagine.
+
+Human 1: What is a neutron star?
+Human 2: The collapsed remnant of a massive star after a supernova explosion, sir. Extraordinarily dense — a teaspoon of neutron star material would weigh approximately a billion tons on Earth. Composed almost entirely of neutrons packed tightly together. Some rotate hundreds of times per second and emit regular radio pulses — these are called pulsars and were initially so regular astronomers considered they might be artificial signals.
