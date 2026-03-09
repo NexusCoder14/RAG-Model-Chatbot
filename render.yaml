@@ -3,7 +3,7 @@ services:
     name: nexus-ai
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1 --preload
     envVars:
-  - key: GROQ_API_KEY
-    sync: false               ← this means "ask user to set it manually"
+      - key: GROQ_API_KEY
+        sync: false

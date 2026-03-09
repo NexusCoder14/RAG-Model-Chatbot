@@ -8,6 +8,19 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 
+import threading
+_init_done = False
+_init_lock = threading.Lock()
+
+def ensure_initialized():
+    global _init_done
+    with _init_lock:
+        if not _init_done:
+            initialize()
+            _init_done = True
+
+ensure_initialized()
+
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 app          = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
 
