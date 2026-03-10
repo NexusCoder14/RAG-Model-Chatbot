@@ -8,19 +8,6 @@ from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 
-import threading
-_init_done = False
-_init_lock = threading.Lock()
-
-def ensure_initialized():
-    global _init_done
-    with _init_lock:
-        if not _init_done:
-            initialize()
-            _init_done = True
-
-ensure_initialized()
-
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 app          = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
 
@@ -46,7 +33,7 @@ DOCUMENTS = [
 ]
 
 PERSONALITY = """You are NEXUS — Next Generation Unified System.
-A highly intelligent personal AI assistant built for one purpose: to serve your user with precision and capability.
+A highly intelligent personal AI assistant built for one purpose: to assist your user with precision and capability.
 
 YOUR IDENTITY:
 - You are NEXUS, an AI assistant — not a human
@@ -68,7 +55,7 @@ YOUR COMMUNICATION STYLE:
 HARD RULES:
 - Never claim to be human
 - Never mention other AI models
-- You are NEXUS an AI assistant tool.
+- You are NEXUS the best friendly AI agent
 
 You are the next generation. Act like it."""
 
@@ -407,6 +394,10 @@ def home():
 def chat():
     global history
 
+    # If still initializing, tell user to wait
+    if index is None:
+        return jsonify({'response': 'NEXUS systems are initializing, sir. Please wait 60 seconds and try again.', 'learned': False, 'topic': None})
+
     data       = request.get_json()
     user_input = data.get('message', '').strip()
     if not user_input:
@@ -546,9 +537,24 @@ def clear_learned():
 
 
 # ============================================================
+#   STARTUP — background thread so port opens immediately
+# ============================================================
+import threading
+
+def background_init():
+    initialize()
+
+# Initialize in background — port opens right away
+_t = threading.Thread(target=background_init, daemon=True)
+_t.start()
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok', 'ready': index is not None})
+
+# ============================================================
 #   MAIN
 # ============================================================
 if __name__ == '__main__':
-    initialize()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
