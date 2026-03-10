@@ -394,16 +394,9 @@ def home():
 def chat():
     global history
 
-    # If still initializing, tell user to wait
+    # Safety check
     if index is None:
-        import time
-        # Wait up to 60 seconds for init to complete
-        for _ in range(12):
-            time.sleep(5)
-            if index is not None:
-                break
-        if index is None:
-            return jsonify({'response': 'NEXUS systems are still loading, sir. Please refresh the page and try again in 30 seconds.', 'learned': False, 'topic': None})
+        return jsonify({'response': 'NEXUS is not ready yet, sir. Please refresh the page.', 'learned': False, 'topic': None})
 
     data       = request.get_json()
     user_input = data.get('message', '').strip()
@@ -485,6 +478,9 @@ You are NEXUS — you simply know things."""
         )
         answer = response.choices[0].message.content.strip()
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f'[ CHAT ERROR ]: {e}', flush=True)
         answer = f"System error: {str(e)}"
 
     # 6 — Update memory
@@ -544,22 +540,15 @@ def clear_learned():
 
 
 # ============================================================
-#   STARTUP — background thread so port opens immediately
+#   STARTUP — initialize directly at module level
 # ============================================================
-import threading
-
-def background_init():
-    try:
-        initialize()
-        print('[ NEXUS READY ]', flush=True)
-    except Exception as e:
-        import traceback
-        print(f'[ NEXUS INIT FAILED ]: {e}', flush=True)
-        traceback.print_exc()
-
-# Initialize in background — port opens right away
-_t = threading.Thread(target=background_init, daemon=True)
-_t.start()
+try:
+    initialize()
+    print('[ NEXUS READY ]', flush=True)
+except Exception as e:
+    import traceback
+    print(f'[ NEXUS INIT FAILED ]: {e}', flush=True)
+    traceback.print_exc()
 
 @app.route('/health')
 def health():
