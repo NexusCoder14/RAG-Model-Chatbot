@@ -11,7 +11,7 @@ import numpy as np
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 app          = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
 
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', 'your_groq_api_key_here')
 MODEL_NAME   = 'llama-3.3-70b-versatile'
 MEMORY_FILE  = os.path.join(BASE_DIR, 'nexus_memory.json')
 LEARNED_FILE = os.path.join(BASE_DIR, 'nexus_learned.json')
@@ -33,7 +33,7 @@ DOCUMENTS = [
 ]
 
 PERSONALITY = """You are NEXUS — Next Generation Unified System.
-A highly intelligent personal AI assistant built for one purpose: to assist your user with precision and capability.
+A highly intelligent personal AI assistant built for one purpose: to serve your user with precision and capability.
 
 YOUR IDENTITY:
 - You are NEXUS, an AI assistant — not a human
@@ -55,7 +55,7 @@ YOUR COMMUNICATION STYLE:
 HARD RULES:
 - Never claim to be human
 - Never mention other AI models
-- You are NEXUS the best friendly AI agent
+- You are NEXUS — nothing more, nothing less
 
 You are the next generation. Act like it."""
 
@@ -396,7 +396,14 @@ def chat():
 
     # If still initializing, tell user to wait
     if index is None:
-        return jsonify({'response': 'NEXUS systems are initializing, sir. Please wait 60 seconds and try again.', 'learned': False, 'topic': None})
+        import time
+        # Wait up to 60 seconds for init to complete
+        for _ in range(12):
+            time.sleep(5)
+            if index is not None:
+                break
+        if index is None:
+            return jsonify({'response': 'NEXUS systems are still loading, sir. Please refresh the page and try again in 30 seconds.', 'learned': False, 'topic': None})
 
     data       = request.get_json()
     user_input = data.get('message', '').strip()
@@ -542,7 +549,13 @@ def clear_learned():
 import threading
 
 def background_init():
-    initialize()
+    try:
+        initialize()
+        print('[ NEXUS READY ]', flush=True)
+    except Exception as e:
+        import traceback
+        print(f'[ NEXUS INIT FAILED ]: {e}', flush=True)
+        traceback.print_exc()
 
 # Initialize in background — port opens right away
 _t = threading.Thread(target=background_init, daemon=True)
