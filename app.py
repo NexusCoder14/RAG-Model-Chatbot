@@ -11,7 +11,7 @@ from pymongo import MongoClient
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 app          = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
 
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', 'your_groq_api_key_here')
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 MODEL_NAME   = 'llama-3.3-70b-versatile'
 MEMORY_FILE  = os.path.join(BASE_DIR, 'nexus_memory.json')
 LEARNED_FILE = os.path.join(BASE_DIR, 'nexus_learned.json')
