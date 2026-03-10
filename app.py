@@ -6,6 +6,7 @@ from collections import Counter
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from groq import Groq
+from pymongo import MongoClient
 
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 app          = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
@@ -14,6 +15,7 @@ GROQ_API_KEY = os.environ.get('GROQ_API_KEY', 'your_groq_api_key_here')
 MODEL_NAME   = 'llama-3.3-70b-versatile'
 MEMORY_FILE  = os.path.join(BASE_DIR, 'nexus_memory.json')
 LEARNED_FILE = os.path.join(BASE_DIR, 'nexus_learned.json')
+MONGO_URI    = os.environ.get('MONGO_URI', '')
 TOP_K        = 5
 
 DOCUMENTS = [
@@ -63,6 +65,7 @@ You are the next generation. Act like it."""
 # ============================================================
 chunks   = []
 client   = None
+mongo_db = None   # MongoDB connection
 history  = []
 memory   = {}
 learned  = {}   # permanently learned knowledge from web searches
@@ -72,19 +75,30 @@ learned  = {}   # permanently learned knowledge from web searches
 # ============================================================
 def load_learned():
     global learned
+    if mongo_db is not None:
+        doc = mongo_db.learned.find_one({'_id': 'nexus_learned'})
+        if doc:
+            learned = doc.get('data', {"topics":[],"knowledge":[],"total_learned":0})
+            print(f'  Learned knowledge: {len(learned.get("topics", []))} topics (MongoDB)')
+            return
+    # Fallback to file
     if os.path.exists(LEARNED_FILE):
         with open(LEARNED_FILE, 'r', encoding='utf-8') as f:
             learned = json.load(f)
-        print(f'  Learned knowledge: {len(learned.get("topics", []))} topics')
+        print(f'  Learned knowledge: {len(learned.get("topics", []))} topics (file)')
     else:
-        learned = {
-            "topics": [],       # list of topics NEXUS has learned
-            "knowledge": [],    # list of knowledge entries
-            "total_learned": 0
-        }
+        learned = {"topics":[],"knowledge":[],"total_learned":0}
         save_learned()
 
 def save_learned():
+    if mongo_db is not None:
+        mongo_db.learned.update_one(
+            {'_id': 'nexus_learned'},
+            {'$set': {'data': learned}},
+            upsert=True
+        )
+        return
+    # Fallback to file
     with open(LEARNED_FILE, 'w', encoding='utf-8') as f:
         json.dump(learned, f, indent=2)
 
@@ -134,10 +148,17 @@ def get_learned_context(query):
 # ============================================================
 def load_memory():
     global memory
+    if mongo_db is not None:
+        doc = mongo_db.memory.find_one({'_id': 'nexus_memory'})
+        if doc:
+            memory = doc.get('data', {})
+            print(f'  Memory: {len(memory.get("facts",[]))} facts, {memory.get("conversation_count",0)} convos (MongoDB)')
+            return
+    # Fallback to file
     if os.path.exists(MEMORY_FILE):
         with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
             memory = json.load(f)
-        print(f'  Memory: {len(memory.get("facts",[]))} facts, {memory.get("conversation_count",0)} convos')
+        print(f'  Memory: {len(memory.get("facts",[]))} facts, {memory.get("conversation_count",0)} convos (file)')
     else:
         memory = {
             "user_profile": {"name": None, "interests": [], "goals": []},
@@ -150,6 +171,14 @@ def load_memory():
         print('  Fresh memory initialized')
 
 def save_memory():
+    if mongo_db is not None:
+        mongo_db.memory.update_one(
+            {'_id': 'nexus_memory'},
+            {'$set': {'data': memory}},
+            upsert=True
+        )
+        return
+    # Fallback to file
     with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
         json.dump(memory, f, indent=2)
 
@@ -350,10 +379,22 @@ def should_search_web(user_question, rag_context, learned_context):
 #   STARTUP
 # ============================================================
 def initialize():
-    global chunks, client
+    global chunks, client, mongo_db
     print('\n[ NEXUS INITIALIZING ]')
     client = Groq(api_key=GROQ_API_KEY)
     print('  Groq client ready')
+    # Connect to MongoDB
+    if MONGO_URI:
+        try:
+            mc       = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+            mc.admin.command('ping')
+            mongo_db = mc['nexus']
+            print('  MongoDB connected ✅')
+        except Exception as e:
+            print(f'  MongoDB failed: {e} — using file fallback')
+            mongo_db = None
+    else:
+        print('  No MONGO_URI — using file storage')
     load_memory()
     load_learned()
     print('  Loading documents...')
