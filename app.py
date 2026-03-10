@@ -1,12 +1,11 @@
 import os
 import json
 import re
+import math
+from collections import Counter
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from groq import Groq
-from sentence_transformers import SentenceTransformer
-import faiss
-import numpy as np
 
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 app          = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
@@ -62,8 +61,6 @@ You are the next generation. Act like it."""
 # ============================================================
 #   GLOBAL STATE
 # ============================================================
-embedder = None
-index    = None
 chunks   = []
 client   = None
 history  = []
@@ -198,7 +195,7 @@ def update_memory(user_input, bot_response):
     save_memory()
 
 # ============================================================
-#   RAG FUNCTIONS
+#   RAG FUNCTIONS — lightweight keyword search (no FAISS/torch)
 # ============================================================
 def load_documents():
     all_text = ""
@@ -224,33 +221,25 @@ def split_into_chunks(text):
             i += 1
     return list(set([c for c in chunks_list if len(c) > 30]))
 
-def build_index(chunks_list, emb):
-    print('  Building vector index...')
-    embeddings = emb.encode(chunks_list, show_progress_bar=True, batch_size=32)
-    dim = embeddings.shape[1]
-    idx = faiss.IndexFlatL2(dim)
-    idx.add(embeddings.astype('float32'))
-    return idx
+def tokenize(text):
+    return re.findall(r'\b\w+\b', text.lower())
 
-def save_index(idx, chunks_list):
-    faiss.write_index(idx, os.path.join(BASE_DIR, 'nexus_index.faiss'))
-    with open(os.path.join(BASE_DIR, 'nexus_chunks.json'), 'w') as f:
-        json.dump(chunks_list, f)
-
-def load_saved_index():
-    ip = os.path.join(BASE_DIR, 'nexus_index.faiss')
-    cp = os.path.join(BASE_DIR, 'nexus_chunks.json')
-    if os.path.exists(ip) and os.path.exists(cp):
-        print('  Loading saved index...')
-        idx = faiss.read_index(ip)
-        with open(cp,'r') as f: cks = json.load(f)
-        return idx, cks
-    return None, None
+def tfidf_score(query_tokens, chunk):
+    chunk_tokens = tokenize(chunk)
+    chunk_counter = Counter(chunk_tokens)
+    score = 0
+    for token in query_tokens:
+        if token in chunk_counter:
+            tf  = chunk_counter[token] / len(chunk_tokens)
+            idf = math.log(len(chunks) / (1 + sum(1 for c in chunks if token in c.lower())))
+            score += tf * idf
+    return score
 
 def retrieve(query, top_k=TOP_K):
-    qv = embedder.encode([query]).astype('float32')
-    _, indices = index.search(qv, top_k)
-    return [chunks[i] for i in indices[0] if i < len(chunks)]
+    query_tokens = tokenize(query)
+    scored = [(tfidf_score(query_tokens, c), c) for c in chunks]
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [c for _, c in scored[:top_k] if _ > 0]
 
 # ============================================================
 #   WEB SEARCH + LEARN
@@ -361,23 +350,17 @@ def should_search_web(user_question, rag_context, learned_context):
 #   STARTUP
 # ============================================================
 def initialize():
-    global embedder, index, chunks, client
+    global chunks, client
     print('\n[ NEXUS INITIALIZING ]')
-    client   = Groq(api_key=GROQ_API_KEY)
-    embedder = SentenceTransformer('all-MiniLM-L6-v2')
-    print('  Embedding model ready')
+    client = Groq(api_key=GROQ_API_KEY)
+    print('  Groq client ready')
     load_memory()
     load_learned()
-    index, chunks = load_saved_index()
-    if index is None:
-        print('  Loading documents...')
-        text = load_documents()
-        if not text.strip():
-            print('  ERROR: No documents found!'); return
-        chunks = split_into_chunks(text)
-        print(f'  {len(chunks)} chunks created')
-        index = build_index(chunks, embedder)
-        save_index(index, chunks)
+    print('  Loading documents...')
+    text = load_documents()
+    if not text.strip():
+        print('  WARNING: No documents found!')
+    chunks = split_into_chunks(text)
     print(f'  Knowledge base: {len(chunks)} chunks')
     print(f'  Model: {MODEL_NAME}')
     print('  NEXUS online — web search + learning enabled.\n')
@@ -395,7 +378,7 @@ def chat():
     global history
 
     # Safety check
-    if index is None:
+    if not chunks:
         return jsonify({'response': 'NEXUS is not ready yet, sir. Please refresh the page.', 'learned': False, 'topic': None})
 
     data       = request.get_json()
@@ -552,7 +535,7 @@ except Exception as e:
 
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok', 'ready': index is not None})
+    return jsonify({'status': 'ok', 'ready': len(chunks) > 0})
 
 # ============================================================
 #   MAIN
