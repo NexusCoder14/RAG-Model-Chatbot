@@ -239,77 +239,72 @@ def build_memory_context():
 
 
 def extract_and_save_memory(user_input, bot_response):
-    """Use Llama to extract everything worth remembering from the conversation."""
-    try:
-        extraction = client.chat.completions.create(
-            model    = MODEL_NAME,
-            messages = [
-                {"role": "system", "content": """You are a memory extraction system for a personal AI assistant.
-Analyze the conversation and extract everything worth remembering permanently.
+    """Lightweight keyword-based memory extraction — no extra API calls."""
+    lower = user_input.lower().strip()
 
-Return a JSON object with these keys (only include keys that have new data):
-{
-  "name": "user's name if mentioned",
-  "facts": ["list of facts about the user"],
-  "instructions": ["permanent instructions the user gave like always/never/don't/please/stop/start"],
-  "preferences": ["user preferences like tone, style, topics they like/dislike"],
-  "goals": ["user goals or things they want to achieve"]
-}
+    # ── Name ──
+    for pattern in ['my name is ', 'i am ', "i'm ", 'call me ']:
+        if pattern in lower:
+            try:
+                name = lower.split(pattern)[-1].strip().split()[0].capitalize()
+                if len(name) > 1 and name.isalpha():
+                    memory['user_profile']['name'] = name
+                    fact = f"User's name is {name}"
+                    if fact not in memory.get('facts', []):
+                        memory.setdefault('facts', []).append(fact)
+            except: pass
 
-Rules:
-- Only extract NEW information not already known
-- Instructions are things like: "always call me X", "never say Y", "respond in Z way", "stop doing X"
-- Facts are personal info: job, age, location, hobbies, relationships
-- Be precise and concise
-- If nothing worth saving, return {}
-"""},
-                {"role": "user", "content": f"User said: {user_input}\nNEXUS replied: {bot_response}\n\nExtract what to remember. Return JSON only, no other text."}
-            ],
-            max_tokens  = 300,
-            temperature = 0.1,
-        )
-        raw = extraction.choices[0].message.content.strip()
-        # Clean JSON
-        raw = re.sub(r'^```json|^```|```$', '', raw, flags=re.MULTILINE).strip()
-        extracted = json.loads(raw)
-
-        if not extracted:
-            return
-
-        # Save name
-        if extracted.get('name'):
-            memory['user_profile']['name'] = extracted['name'].capitalize()
-
-        # Save facts
-        for fact in extracted.get('facts', []):
-            if fact and fact not in memory.get('facts', []):
-                memory.setdefault('facts', []).append(fact)
-
-        # Save instructions
-        for inst in extracted.get('instructions', []):
-            if inst and inst not in memory.get('instructions', []):
+    # ── Instructions ──
+    instruction_triggers = ['always ', 'never ', "don't ", 'do not ', 'stop ',
+                            'start ', 'please ', 'from now on', 'every time',
+                            'make sure', 'remember to', 'i want you to']
+    for trigger in instruction_triggers:
+        if lower.startswith(trigger) or f' {trigger}' in lower:
+            inst = user_input.strip()
+            if len(inst) > 8 and inst not in memory.get('instructions', []):
                 memory.setdefault('instructions', []).append(inst)
+                print(f'  Instruction saved: {inst[:60]}', flush=True)
+            break
 
-        # Save preferences
-        for pref in extracted.get('preferences', []):
-            if pref and pref not in memory.get('preferences', []):
-                memory.setdefault('preferences', []).append(pref)
+    # ── Facts ──
+    fact_triggers = ['i am ', "i'm ", 'i work ', 'i live ', 'i study ',
+                     'i love ', 'i like ', 'i enjoy ', 'i hate ', 'i dislike ',
+                     'my job', 'my age', 'my hobby', 'i am from', 'i go to',
+                     'i have ', 'i play ', 'i watch ', 'i use ']
+    for trigger in fact_triggers:
+        if trigger in lower and len(user_input) > 10:
+            fact = user_input.strip()[:150]
+            if fact not in memory.get('facts', []):
+                memory.setdefault('facts', []).append(fact)
+            break
 
-        # Save goals
-        for goal in extracted.get('goals', []):
-            if goal and goal not in memory.get('goals', []):
+    # ── Goals ──
+    goal_triggers = ['my goal', 'i want to', 'i plan to', 'i am trying',
+                     'i wish', 'i hope to', 'i need to', 'i will ']
+    for trigger in goal_triggers:
+        if trigger in lower and len(user_input) > 10:
+            goal = user_input.strip()[:150]
+            if goal not in memory.get('goals', []):
                 memory.setdefault('goals', []).append(goal)
+            break
 
-        # Keep lists clean
-        memory['facts']        = memory.get('facts', [])[-100:]
-        memory['instructions'] = memory.get('instructions', [])[-50:]
-        memory['preferences']  = memory.get('preferences', [])[-50:]
-        memory['goals']        = memory.get('goals', [])[-30:]
+    # ── Preferences ──
+    pref_triggers = ['i prefer ', 'i like when', 'i dont like when',
+                     'respond in ', 'reply in ', 'speak in ', 'use ',
+                     'be more ', 'be less ', 'shorter', 'longer',
+                     'in hindi', 'in english', 'formally', 'casually']
+    for trigger in pref_triggers:
+        if trigger in lower and len(user_input) > 8:
+            pref = user_input.strip()[:150]
+            if pref not in memory.get('preferences', []):
+                memory.setdefault('preferences', []).append(pref)
+            break
 
-        print(f'  Memory updated: {len(extracted)} categories extracted', flush=True)
-
-    except Exception as e:
-        print(f'  Memory extraction error: {e}', flush=True)
+    # Keep lists trimmed
+    memory['facts']        = memory.get('facts', [])[-100:]
+    memory['instructions'] = memory.get('instructions', [])[-50:]
+    memory['preferences']  = memory.get('preferences', [])[-50:]
+    memory['goals']        = memory.get('goals',  [])[-30:]
 
 
 def update_memory(user_input, bot_response):
