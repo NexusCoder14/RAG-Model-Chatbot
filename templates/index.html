@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>NEXUS — Next Generation Unified System</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@200;300;400;600&display=swap" rel="stylesheet">
 <style>
@@ -286,8 +286,11 @@ header::after {
 
 #inp {
   width:100%; background:transparent; border:none; outline:none;
-  color:var(--text); font-family:var(--mono); font-size:13px;
+  color:var(--text); font-family:var(--mono); font-size:16px;
   padding:14px 18px; resize:none; max-height:130px; line-height:1.6;
+}
+@media(min-width:769px) {
+  #inp { font-size:13px; }
 }
 #inp::placeholder { color:var(--text-faint); }
 
@@ -352,13 +355,67 @@ header::after {
 .cdec.tl{top:0;left:0;} .cdec.tr{top:0;right:0;} .cdec.bl{bottom:0;left:0;} .cdec.br{bottom:0;right:0;}
 .cdec svg { width:60px; height:60px; }
 
-/* ── RESPONSIVE ── */
-@media(max-width:640px) {
-  header { padding:0 14px; }
-  .header-center, .hbar-group { display:none; }
-  .main { padding:0 12px; }
-  .mbub { max-width:88%; }
-  .side-panel { display:none; }
+/* ── RESPONSIVE / MOBILE ── */
+@media(max-width:768px) {
+  /* Hide desktop-only elements */
+  .header-center, .hbar-group, .side-panel, .cdec { display:none !important; }
+
+  /* Header */
+  header { padding:0 14px; height:52px; }
+  .logo-name { font-size:15px; letter-spacing:4px; }
+  .logo-sub { display:none; }
+  .logo-icon { width:30px; height:30px; }
+  .mem-btn { padding:0 9px; font-size:8px; gap:4px; height:28px; }
+  #learn-btn { display:none; }
+
+  /* Main */
+  .main { padding:0 10px; }
+
+  /* Messages */
+  #msgs { padding:10px 0; gap:10px; }
+  .mbub { max-width:90%; }
+  .mbub-body { font-size:13px; padding:9px 12px 11px; }
+  .mav { width:28px; height:28px; font-size:7px; }
+
+  /* Welcome screen */
+  #welcome { gap:14px; padding:10px 0; }
+  #ring-canvas { width:100px; height:100px; }
+  .wtitle { font-size:clamp(24px,8vw,40px); letter-spacing:6px; }
+  .wsub { font-size:8px; letter-spacing:2px; }
+  .wgrid { grid-template-columns: repeat(2, 1fr); gap:8px; }
+  .wcard { padding:10px 12px; }
+  .wcard-icon { font-size:16px; margin-bottom:5px; }
+  .wcard-text { font-size:10px; }
+
+  /* Input area */
+  .iarea { padding:10px 0 14px; }
+  .ihud { margin-bottom:8px; }
+  .itag { font-size:7px; padding:2px 8px; }
+  #inp { font-size:13px; padding:12px 14px; }
+  #sbtn { width:44px; height:44px; }
+
+  /* Panels — full width on mobile */
+  #mpanel { width:calc(100vw - 24px); right:12px; left:12px; top:60px; }
+  #lpanel { width:calc(100vw - 24px); right:12px; left:12px; top:60px; }
+
+  /* Boot screen */
+  .boot-logo { font-size:clamp(36px,12vw,60px); letter-spacing:8px; }
+  .boot-lines { font-size:10px; }
+  .boot-tagline { font-size:9px; letter-spacing:2px; }
+}
+
+/* Extra small phones */
+@media(max-width:380px) {
+  .wgrid { grid-template-columns: 1fr 1fr; gap:6px; }
+  .logo-name { font-size:13px; letter-spacing:3px; }
+  .mbub { max-width:94%; }
+  .mbub-body { font-size:12px; }
+}
+
+/* Fix keyboard push on mobile — keep input visible */
+@supports (-webkit-touch-callout: none) {
+  html, body { height: -webkit-fill-available; }
+  #app { height: -webkit-fill-available; }
 }
 
 /* ── LEARNED BADGE ── */
