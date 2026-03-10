@@ -829,12 +829,29 @@ async function showMem() {
     h += `<div class="mrow2"><span class="mkey">First seen</span><span class="mval">${d.first_seen}</span></div>`;
     h += `<div class="mrow2"><span class="mkey">Last seen</span><span class="mval">${d.last_seen}</span></div>`;
     h += `<div class="mrow2"><span class="mkey">Topics learned</span><span class="mval" style="color:var(--gold)">${d.total_learned || 0}</span></div>`;
+    // Facts
     if (d.facts && d.facts.length > 0) {
       h += `<div class="msec">KNOWN FACTS (${d.facts.length})</div>`;
       d.facts.slice(-10).forEach(f => { h += `<div class="mfact">${f}</div>`; });
-    } else {
-      h += `<div class="msec">KNOWN FACTS</div>`;
-      h += `<div style="color:var(--text-muted);font-size:10px;padding:4px 0;">No facts learned yet. Keep chatting — NEXUS is listening.</div>`;
+    }
+    // Instructions
+    if (d.instructions && d.instructions.length > 0) {
+      h += `<div class="msec">PERMANENT INSTRUCTIONS (${d.instructions.length})</div>`;
+      d.instructions.forEach(i => { h += `<div class="mfact" style="color:var(--amber)">${i}</div>`; });
+    }
+    // Preferences
+    if (d.preferences && d.preferences.length > 0) {
+      h += `<div class="msec">PREFERENCES (${d.preferences.length})</div>`;
+      d.preferences.forEach(p => { h += `<div class="mfact" style="color:var(--gold)">${p}</div>`; });
+    }
+    // Goals
+    if (d.goals && d.goals.length > 0) {
+      h += `<div class="msec">GOALS (${d.goals.length})</div>`;
+      d.goals.forEach(g => { h += `<div class="mfact" style="color:#88ff88">${g}</div>`; });
+    }
+    if (!d.facts?.length && !d.instructions?.length && !d.preferences?.length) {
+      h += `<div class="msec">MEMORY</div>`;
+      h += `<div style="color:var(--text-muted);font-size:10px;padding:4px 0;">No data yet. Keep chatting — NEXUS is learning everything.</div>`;
     }
     c.innerHTML = h;
   } catch(e) { c.innerHTML = '<div style="color:var(--text-muted)">Error loading memory.</div>'; }

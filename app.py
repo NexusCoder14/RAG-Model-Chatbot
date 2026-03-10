@@ -161,10 +161,15 @@ def load_memory():
         print(f'  Memory: {len(memory.get("facts",[]))} facts, {memory.get("conversation_count",0)} convos (file)')
     else:
         memory = {
-            "user_profile": {"name": None, "interests": [], "goals": []},
-            "facts": [], "conversation_count": 0, "total_messages": 0,
-            "first_seen": str(datetime.now().date()),
-            "last_seen":  str(datetime.now().date()),
+            "user_profile":    {"name": None},
+            "facts":           [],
+            "instructions":    [],
+            "preferences":     [],
+            "goals":           [],
+            "conversation_count": 0,
+            "total_messages":     0,
+            "first_seen":  str(datetime.now().date()),
+            "last_seen":   str(datetime.now().date()),
             "conversation_log": []
         }
         save_memory()
@@ -183,42 +188,139 @@ def save_memory():
         json.dump(memory, f, indent=2)
 
 def build_memory_context():
-    if not memory.get('facts') and not memory['user_profile']['name']:
+    sections = []
+
+    # ── User profile ──
+    profile = []
+    if memory.get('user_profile', {}).get('name'):
+        profile.append(f"Name: {memory['user_profile']['name']}")
+    if memory.get('conversation_count', 0) > 0:
+        profile.append(f"You have spoken {memory['conversation_count']} times before")
+    if memory.get('first_seen'):
+        profile.append(f"First met: {memory['first_seen']}")
+    if profile:
+        sections.append("USER PROFILE:\n" + "\n".join(f"  - {p}" for p in profile))
+
+    # ── Facts ──
+    if memory.get('facts'):
+        facts = "\n".join(f"  - {f}" for f in memory['facts'][-20:])
+        sections.append(f"FACTS YOU KNOW ABOUT THIS USER:\n{facts}")
+
+    # ── Permanent instructions ──
+    if memory.get('instructions'):
+        insts = "\n".join(f"  - {i}" for i in memory['instructions'])
+        sections.append(f"PERMANENT INSTRUCTIONS (follow these always, no exceptions):\n{insts}")
+
+    # ── Preferences ──
+    if memory.get('preferences'):
+        prefs = "\n".join(f"  - {p}" for p in memory['preferences'])
+        sections.append(f"USER PREFERENCES (always respect these):\n{prefs}")
+
+    # ── Goals ──
+    if memory.get('goals'):
+        goals = "\n".join(f"  - {g}" for g in memory['goals'])
+        sections.append(f"USER GOALS (keep these in mind):\n{goals}")
+
+    # ── Recent conversation summary ──
+    logs = memory.get('conversation_log', [])
+    if logs:
+        recent = logs[-5:]
+        summary = "\n".join(f"  [{l['timestamp'][:10]}] You: {l['user'][:80]} | NEXUS: {l['nexus'][:80]}" for l in recent)
+        sections.append(f"RECENT CONVERSATIONS:\n{summary}")
+
+    if not sections:
         return ""
-    lines = ["WHAT YOU KNOW ABOUT THIS USER:"]
-    if memory['user_profile']['name']:
-        lines.append(f"- Name: {memory['user_profile']['name']}")
-    lines.append(f"- Total conversations: {memory.get('conversation_count', 0)}")
-    if memory['facts']:
-        lines.append("- Known facts:")
-        for fact in memory['facts'][-12:]:
-            lines.append(f"  * {fact}")
-    lines.append("Use this knowledge naturally when relevant.")
-    return '\n'.join(lines)
+
+    return "═══ NEXUS MEMORY ═══\n" + "\n\n".join(sections) + "\n═══════════════════\nUse ALL of this knowledge naturally. Follow instructions always."
+
+
+def extract_and_save_memory(user_input, bot_response):
+    """Use Llama to extract everything worth remembering from the conversation."""
+    try:
+        extraction = client.chat.completions.create(
+            model    = MODEL_NAME,
+            messages = [
+                {"role": "system", "content": """You are a memory extraction system for a personal AI assistant.
+Analyze the conversation and extract everything worth remembering permanently.
+
+Return a JSON object with these keys (only include keys that have new data):
+{
+  "name": "user's name if mentioned",
+  "facts": ["list of facts about the user"],
+  "instructions": ["permanent instructions the user gave like always/never/don't/please/stop/start"],
+  "preferences": ["user preferences like tone, style, topics they like/dislike"],
+  "goals": ["user goals or things they want to achieve"]
+}
+
+Rules:
+- Only extract NEW information not already known
+- Instructions are things like: "always call me X", "never say Y", "respond in Z way", "stop doing X"
+- Facts are personal info: job, age, location, hobbies, relationships
+- Be precise and concise
+- If nothing worth saving, return {}
+"""},
+                {"role": "user", "content": f"User said: {user_input}\nNEXUS replied: {bot_response}\n\nExtract what to remember. Return JSON only, no other text."}
+            ],
+            max_tokens  = 300,
+            temperature = 0.1,
+        )
+        raw = extraction.choices[0].message.content.strip()
+        # Clean JSON
+        raw = re.sub(r'^```json|^```|```$', '', raw, flags=re.MULTILINE).strip()
+        extracted = json.loads(raw)
+
+        if not extracted:
+            return
+
+        # Save name
+        if extracted.get('name'):
+            memory['user_profile']['name'] = extracted['name'].capitalize()
+
+        # Save facts
+        for fact in extracted.get('facts', []):
+            if fact and fact not in memory.get('facts', []):
+                memory.setdefault('facts', []).append(fact)
+
+        # Save instructions
+        for inst in extracted.get('instructions', []):
+            if inst and inst not in memory.get('instructions', []):
+                memory.setdefault('instructions', []).append(inst)
+
+        # Save preferences
+        for pref in extracted.get('preferences', []):
+            if pref and pref not in memory.get('preferences', []):
+                memory.setdefault('preferences', []).append(pref)
+
+        # Save goals
+        for goal in extracted.get('goals', []):
+            if goal and goal not in memory.get('goals', []):
+                memory.setdefault('goals', []).append(goal)
+
+        # Keep lists clean
+        memory['facts']        = memory.get('facts', [])[-100:]
+        memory['instructions'] = memory.get('instructions', [])[-50:]
+        memory['preferences']  = memory.get('preferences', [])[-50:]
+        memory['goals']        = memory.get('goals', [])[-30:]
+
+        print(f'  Memory updated: {len(extracted)} categories extracted', flush=True)
+
+    except Exception as e:
+        print(f'  Memory extraction error: {e}', flush=True)
+
 
 def update_memory(user_input, bot_response):
     memory['conversation_count'] = memory.get('conversation_count', 0) + 1
     memory['total_messages']     = memory.get('total_messages', 0) + 1
     memory['last_seen']          = str(datetime.now().date())
-    lower = user_input.lower()
-    if 'my name is' in lower:
-        try:
-            name = user_input.lower().split('my name is')[-1].strip().split()[0].capitalize()
-            memory['user_profile']['name'] = name
-            fact = f"User's name is {name}"
-            if fact not in memory['facts']:
-                memory['facts'].append(fact)
-        except: pass
-    for kw in ['love','like','enjoy','interested in','hate','dislike','passionate about']:
-        if kw in lower and len(user_input) > 10:
-            fact = f"User said: {user_input[:120]}"
-            if fact not in memory['facts']:
-                memory['facts'].append(fact)
-            break
-    memory['facts'] = memory['facts'][-100:]
-    memory['conversation_log'].append({
+
+    # Smart extraction using Llama
+    extract_and_save_memory(user_input, bot_response)
+
+    # Save conversation log
+    memory.setdefault('conversation_log', []).append({
         'timestamp': str(datetime.now()),
-        'user': user_input[:200], 'nexus': bot_response[:200]
+        'user': user_input[:300],
+        'nexus': bot_response[:300]
     })
     memory['conversation_log'] = memory['conversation_log'][-50:]
     save_memory()
@@ -341,12 +443,12 @@ Be factual, precise, and concise. No fluff."""},
 def should_search_web(user_question, rag_context, learned_context):
     """
     Decide if web search is needed.
-    Uses Llama to make the decision intelligently.
     """
     # Skip search for personal/casual questions
     casual_keywords = ['how are you', 'who are you', 'what are you', 'hi', 'hello',
                        'hey', 'thanks', 'thank you', 'my name', 'good morning',
-                       'good night', 'what do you think', 'do you like']
+                       'good night', 'what do you think', 'do you like',
+                       'your name', 'are you', 'can you']
     lower = user_question.lower()
     if any(kw in lower for kw in casual_keywords):
         return False
@@ -355,17 +457,29 @@ def should_search_web(user_question, rag_context, learned_context):
     if learned_context.strip():
         return False
 
+    # Always search for these keywords — current events, facts, news
+    search_triggers = [
+        'who won', 'who is', 'what is', 'when did', 'when is',
+        'latest', 'recent', 'current', 'today', 'news',
+        'price', 'score', 'result', 'winner', 'champion',
+        '2024', '2025', '2026', 'ipl', 'match', 'election',
+        'movie', 'song', 'released', 'launch', 'update',
+        'weather', 'stock', 'rate', 'how much', 'where is'
+    ]
+    if any(kw in lower for kw in search_triggers):
+        return True
+
     # If RAG has strong context, no need to search
-    if len(rag_context.strip()) > 200:
+    if len(rag_context.strip()) > 300:
         return False
 
-    # Ask Llama to decide
+    # Ask Llama to decide for everything else
     try:
         decision = client.chat.completions.create(
             model    = MODEL_NAME,
             messages = [
-                {"role": "system", "content": "You decide if a question needs a web search for current/specific information. Reply only YES or NO."},
-                {"role": "user",   "content": f"Question: {user_question}\n\nDoes this need a web search for current, specific, or factual information that an AI might not know? Reply YES or NO only."}
+                {"role": "system", "content": "You decide if a question needs a web search. Reply only YES or NO."},
+                {"role": "user",   "content": f"Question: {user_question}\n\nDoes this need a web search for current or factual information? Reply YES or NO only."}
             ],
             max_tokens  = 5,
             temperature = 0.1,
@@ -527,6 +641,9 @@ def get_memory():
     return jsonify({
         'profile':            memory.get('user_profile', {}),
         'facts':              memory.get('facts', []),
+        'instructions':       memory.get('instructions', []),
+        'preferences':        memory.get('preferences', []),
+        'goals':              memory.get('goals', []),
         'conversation_count': memory.get('conversation_count', 0),
         'total_messages':     memory.get('total_messages', 0),
         'first_seen':         memory.get('first_seen', ''),
